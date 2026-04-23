@@ -1,0 +1,63 @@
+name: terraform-dev-plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform-dev-*.yml"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET_DEV }}
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE_DEV }}
+      TF_STATE_KEY: "dev/k8s/terraform.tfstate"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Write backend.hcl (dev)
+        shell: bash
+        run: |
+          cat > infra/terraform/live/dev/k8s/backend.hcl <<EOF
+          bucket         = "${TF_STATE_BUCKET}"
+          key            = "${TF_STATE_KEY}"
+          region         = "${AWS_REGION}"
+          dynamodb_table = "${TF_LOCK_TABLE}"
+          encrypt        = true
+          EOF
+
+      - name: Terraform init (dev/k8s)
+        working-directory: infra/terraform/live/dev/k8s
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform validate (dev/k8s)
+        working-directory: infra/terraform/live/dev/k8s
+        run: terraform validate
+
+      - name: Terraform plan (dev/k8s)
+        id: plan
+        working-directory: infra/terraform/live/dev/k8s
+        run: terraform plan -no-color
+
