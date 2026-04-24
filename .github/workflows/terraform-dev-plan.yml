@@ -36,7 +36,7 @@ jobs:
           terraform_version: "1.6.6"
 
       - name: Terraform fmt (check)
-        run: terraform fmt -check -recursive infra/terraform
+        run: terraform fmt -check -diff -recursive infra/terraform
 
       - name: Write backend.hcl (dev)
         shell: bash
