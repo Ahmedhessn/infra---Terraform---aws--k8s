@@ -5,6 +5,7 @@ on:
     paths:
       - "infra/terraform/**"
       - ".github/workflows/terraform-dev-*.yml"
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
