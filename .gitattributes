@@ -1,0 +1,26 @@
+* text=auto
+
+# Force LF on Terraform sources/templates for Linux CI runners
+*.tf     text eol=lf
+*.tfvars text eol=lf
+*.tftpl  text eol=lf
+*.hcl    text eol=lf
+
+# GitHub Actions / scripts
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.sh     text eol=lf
+
+* text=auto
+
+# Ensure consistent line endings on GitHub runners (Linux)
+*.tf      text eol=lf
+*.tfvars  text eol=lf
+*.tftpl   text eol=lf
+*.hcl     text eol=lf
+
+# Workflows/scripts
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.sh      text eol=lf
+
