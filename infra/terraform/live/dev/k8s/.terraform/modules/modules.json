@@ -1,1 +1,0 @@
-{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"ecr","Source":"../../../modules/ecr","Dir":"../../../modules/ecr"},{"Key":"k8s","Source":"../../../modules/k8s_self_managed","Dir":"../../../modules/k8s_self_managed"},{"Key":"vpc","Source":"../../../modules/vpc","Dir":"../../../modules/vpc"}]}
