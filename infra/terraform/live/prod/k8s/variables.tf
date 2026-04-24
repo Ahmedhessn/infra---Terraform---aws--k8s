@@ -11,8 +11,8 @@ variable "project" {
 }
 
 variable "environment" {
-  type        = string
-  default     = "prod"
+  type    = string
+  default = "prod"
 }
 
 variable "vpc_cidr" {

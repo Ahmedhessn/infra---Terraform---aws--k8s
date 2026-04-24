@@ -31,13 +31,13 @@ variable "allowed_k8s_api_cidrs" {
 }
 
 variable "instance_type_master" {
-  type        = string
-  default     = "t3.medium"
+  type    = string
+  default = "t3.medium"
 }
 
 variable "instance_type_worker" {
-  type        = string
-  default     = "t3.medium"
+  type    = string
+  default = "t3.medium"
 }
 
 variable "master_market_type" {
@@ -63,8 +63,8 @@ variable "worker_market_type" {
 }
 
 variable "worker_count" {
-  type        = number
-  default     = 3
+  type    = number
+  default = 3
 }
 
 variable "kubernetes_version" {

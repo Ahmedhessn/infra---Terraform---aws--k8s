@@ -40,13 +40,13 @@ module "k8s" {
   source = "../../../modules/k8s_self_managed"
 
   ## HOW: Attach the cluster to the network created above.
-  name                = local.name
-  vpc_id              = module.vpc.vpc_id
-  vpc_cidr            = var.vpc_cidr
-  subnet_ids          = module.vpc.private_subnet_ids
+  name       = local.name
+  vpc_id     = module.vpc.vpc_id
+  vpc_cidr   = var.vpc_cidr
+  subnet_ids = module.vpc.private_subnet_ids
 
   ## SECURITY: SSH is disabled by default (empty list). Only enable if necessary, and prefer /32.
-  allowed_ssh_cidrs   = var.allowed_ssh_cidrs
+  allowed_ssh_cidrs = var.allowed_ssh_cidrs
 
   ## SECURITY: The API (6443) is VPC-only by default; you can add external CIDRs (e.g., your public IP).
   allowed_k8s_api_cidrs = var.allowed_k8s_api_cidrs

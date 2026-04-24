@@ -36,8 +36,8 @@ resource "aws_subnet" "public" {
   ## HOW: `map_public_ip_on_launch=true` gives instances a public IP if you ever place them here.
   for_each = { for idx, az in local.azs : idx => az }
 
-  vpc_id                  = aws_vpc.this.id
-  availability_zone       = each.value
+  vpc_id            = aws_vpc.this.id
+  availability_zone = each.value
   ## HOW: Derive subnets from VPC CIDR. Newbits=8 is simple; adjust if you need different sizing.
   cidr_block              = cidrsubnet(var.cidr_block, 8, each.key)
   map_public_ip_on_launch = true
@@ -54,7 +54,7 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.this.id
   availability_zone = each.value
   ## HOW: Use a different subnet index range (+10) to avoid overlap with public subnets.
-  cidr_block        = cidrsubnet(var.cidr_block, 8, each.key + 10)
+  cidr_block = cidrsubnet(var.cidr_block, 8, each.key + 10)
 
   tags = {
     Name = "${var.name}-private-${each.value}"
@@ -98,7 +98,7 @@ resource "aws_route" "public_internet" {
 
 resource "aws_route_table_association" "public" {
   ## HOW: Attach each public subnet to the public route table.
-  for_each = aws_subnet.public
+  for_each       = aws_subnet.public
   subnet_id      = each.value.id
   route_table_id = aws_route_table.public.id
 }
@@ -120,7 +120,7 @@ resource "aws_route" "private_nat" {
 
 resource "aws_route_table_association" "private" {
   ## HOW: Attach each private subnet to the private route table.
-  for_each = aws_subnet.private
+  for_each       = aws_subnet.private
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private.id
 }

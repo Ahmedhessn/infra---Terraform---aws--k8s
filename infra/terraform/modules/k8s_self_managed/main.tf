@@ -91,8 +91,8 @@ locals {
 
 data "aws_iam_policy_document" "node_min" {
   statement {
-    sid     = "EcrRead"
-    effect  = "Allow"
+    sid    = "EcrRead"
+    effect = "Allow"
     actions = [
       "ecr:GetAuthorizationToken",
       "ecr:BatchCheckLayerAvailability",
@@ -143,7 +143,7 @@ resource "aws_iam_policy" "node_min" {
 
 resource "aws_iam_role_policy_attachment" "node_min" {
   role       = aws_iam_role.node.name
-  policy_arn  = aws_iam_policy.node_min.arn
+  policy_arn = aws_iam_policy.node_min.arn
 }
 
 resource "aws_iam_instance_profile" "node" {
@@ -200,8 +200,8 @@ locals {
 }
 
 resource "aws_instance" "master" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type_master
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type_master
   ## WHY: Keep master private (no public IP). Access via SSM or via a bastion/VPN if needed.
   subnet_id                   = var.subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.k8s.id]
@@ -234,9 +234,9 @@ resource "aws_instance" "master" {
 }
 
 resource "aws_instance" "worker" {
-  count                       = var.worker_count
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type_worker
+  count         = var.worker_count
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type_worker
   ## HOW: Spread workers across provided subnets (usually private) for multi-AZ resilience.
   subnet_id                   = element(var.subnet_ids, count.index % length(var.subnet_ids))
   vpc_security_group_ids      = [aws_security_group.k8s.id]
