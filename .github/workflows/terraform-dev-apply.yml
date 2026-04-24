@@ -80,7 +80,7 @@ jobs:
           REPLACE_ADDR="${{ github.event.inputs.replace_address }}"
           if [ -n "${REPLACE_ADDR}" ]; then
             # Prevent shell metacharacter injection from workflow inputs.
-            if ! printf '%s' "${REPLACE_ADDR}" | grep -Eq '^[A-Za-z0-9_.:/\[\]-]+$'; then
+            if ! printf '%s' "${REPLACE_ADDR}" | grep -Eq '^[A-Za-z0-9_.:/\[\]\-]+$'; then
               echo "Invalid replace_address. Use a Terraform address like: module.k8s.aws_instance.master"
               echo "Got: '${REPLACE_ADDR}'"
               exit 1
