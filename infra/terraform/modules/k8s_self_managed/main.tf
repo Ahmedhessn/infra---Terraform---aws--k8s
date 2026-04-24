@@ -199,6 +199,14 @@ locals {
   iam_name_prefix = substr(replace(var.name, "_", "-"), 0, 28)
 }
 
+resource "terraform_data" "master_recreate" {
+  input = {
+    instance_type = var.instance_type_master
+    market_type   = var.master_market_type
+    ami           = data.aws_ami.ubuntu.id
+  }
+}
+
 resource "aws_instance" "master" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type_master
@@ -233,6 +241,11 @@ resource "aws_instance" "master" {
   tags = {
     Name = "${var.name}-master"
     Role = "master"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+    replace_triggered_by  = [terraform_data.master_recreate]
   }
 }
 

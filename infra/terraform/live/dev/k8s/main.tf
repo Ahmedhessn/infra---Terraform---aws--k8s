@@ -52,8 +52,12 @@ module "k8s" {
   allowed_k8s_api_cidrs = var.allowed_k8s_api_cidrs
 
   ## COST: Use Spot for both master and workers (cheaper, but can be interrupted).
-  master_market_type = "spot"
+  ## NOTE: The control-plane is memory sensitive; keep master on-demand to avoid interruptions.
+  master_market_type = "on-demand"
   worker_market_type = "spot"
+
+  ## STABILITY: t3.medium can be tight for control-plane components; use a larger master.
+  instance_type_master = "t3.large"
 
   ## SCALE: Number of worker nodes for dev.
   worker_count = 2
