@@ -50,7 +50,7 @@ jobs:
 
       - name: Terraform init (dev/k8s)
         working-directory: infra/terraform/live/dev/k8s
-        run: terraform init -backend-config=backend.hcl
+        run: terraform init -backend-config backend.hcl
 
       - name: Terraform validate (dev/k8s)
         working-directory: infra/terraform/live/dev/k8s
