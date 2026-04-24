@@ -1,0 +1,83 @@
+name: terraform-dev-destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      tf_state_bucket:
+        description: "S3 bucket for Terraform state (dev). Leave empty to use repo variable TF_STATE_BUCKET_DEV."
+        required: false
+        type: string
+      tf_lock_table:
+        description: "DynamoDB table for Terraform state locking (dev). Leave empty to use repo variable TF_LOCK_TABLE_DEV."
+        required: false
+        type: string
+      confirm:
+        description: "Type DESTROY_DEV_K8S to confirm destroying dev/k8s infrastructure."
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ inputs.tf_state_bucket || vars.TF_STATE_BUCKET_DEV }}
+      TF_LOCK_TABLE: ${{ inputs.tf_lock_table || vars.TF_LOCK_TABLE_DEV }}
+      TF_STATE_KEY: "dev/k8s/terraform.tfstate"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Confirm intent
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirm }}" != "DESTROY_DEV_K8S" ]; then
+            echo "Refusing to destroy: confirmation string mismatch."
+            echo "Expected: DESTROY_DEV_K8S"
+            echo "Got: '${{ inputs.confirm }}'"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Validate backend config vars
+        shell: bash
+        run: |
+          if [ -z "${TF_STATE_BUCKET}" ] || [ -z "${TF_LOCK_TABLE}" ]; then
+            echo "Missing backend config. Set repo Variables TF_STATE_BUCKET_DEV and TF_LOCK_TABLE_DEV, or provide inputs in 'Run workflow'."
+            echo "TF_STATE_BUCKET='${TF_STATE_BUCKET}'"
+            echo "TF_LOCK_TABLE='${TF_LOCK_TABLE}'"
+            exit 1
+          fi
+
+      - name: Write backend.hcl (dev)
+        shell: bash
+        run: |
+          cat > infra/terraform/live/dev/k8s/backend.hcl <<EOF
+          bucket         = "${TF_STATE_BUCKET}"
+          key            = "${TF_STATE_KEY}"
+          region         = "${AWS_REGION}"
+          dynamodb_table = "${TF_LOCK_TABLE}"
+          encrypt        = true
+          EOF
+
+      - name: Terraform init (dev/k8s)
+        working-directory: infra/terraform/live/dev/k8s
+        run: terraform init -backend-config backend.hcl
+
+      - name: Terraform destroy (dev/k8s)
+        working-directory: infra/terraform/live/dev/k8s
+        run: terraform destroy -auto-approve
