@@ -10,14 +10,14 @@ ${INSTALL_SCRIPT}
 # Wait for join command in SSM Parameter Store, then join.
 for i in $(seq 1 60); do
   set +e
-  JOIN_CMD="$(aws ssm get-parameter --name "${JOIN_PARAMETER}" --query "Parameter.Value" --output text 2>/dev/null)"
+  JOIN_CMD="$(aws ssm get-parameter --name "$JOIN_PARAMETER" --query "Parameter.Value" --output text 2>/dev/null)"
   rc=$?
   set -e
-  if [ $rc -eq 0 ] && [ -n "${JOIN_CMD}" ] && [ "${JOIN_CMD}" != "None" ]; then
+  if [ $rc -eq 0 ] && [ -n "$JOIN_CMD" ] && [ "$JOIN_CMD" != "None" ]; then
     break
   fi
   sleep 10
 done
 
-bash -c "${JOIN_CMD}"
+bash -c "$JOIN_CMD"
 

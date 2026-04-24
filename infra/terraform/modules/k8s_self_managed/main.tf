@@ -72,7 +72,9 @@ data "aws_iam_policy_document" "assume_ec2" {
 }
 
 resource "aws_iam_role" "node" {
-  name_prefix        = "${var.name}-node-"
+  ## IAM name_prefix has a strict max length (38). Keep it short but identifiable.
+  ## We derive a safe prefix from the cluster name to avoid apply-time failures.
+  name_prefix        = "${local.iam_name_prefix}-node-"
   assume_role_policy = data.aws_iam_policy_document.assume_ec2.json
 }
 
@@ -83,7 +85,8 @@ data "aws_caller_identity" "current" {}
 locals {
   ## WHY: Least-privilege needs a precise ARN for the one SSM Parameter we use.
   ## HOW: Parameter ARNs are `...:parameter/<name>` (note no extra slash before the name).
-  join_param_arn = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter${var.join_parameter_name}"
+  ## NOTE: `data.aws_region.current.name` is deprecated in newer AWS providers; `id` is the region name.
+  join_param_arn = "arn:aws:ssm:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:parameter${var.join_parameter_name}"
 }
 
 data "aws_iam_policy_document" "node_min" {
@@ -134,7 +137,7 @@ data "aws_iam_policy_document" "node_min" {
 }
 
 resource "aws_iam_policy" "node_min" {
-  name_prefix = "${var.name}-node-min-"
+  name_prefix = "${local.iam_name_prefix}-node-min-"
   policy      = data.aws_iam_policy_document.node_min.json
 }
 
@@ -144,7 +147,7 @@ resource "aws_iam_role_policy_attachment" "node_min" {
 }
 
 resource "aws_iam_instance_profile" "node" {
-  name_prefix = "${var.name}-node-"
+  name_prefix = "${local.iam_name_prefix}-node-"
   role        = aws_iam_role.node.name
 }
 
@@ -179,16 +182,21 @@ locals {
 
     # kubeadm/kubelet/kubectl
     mkdir -p /etc/apt/keyrings
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_MAJOR_MINOR}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${K8S_MAJOR_MINOR}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+    ## IMPORTANT: Use $${VAR} to escape Terraform interpolation and keep bash variables intact.
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v$${K8S_MAJOR_MINOR}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$${K8S_MAJOR_MINOR}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
     apt-get update -y
-    apt-get install -y kubelet=${K8S_FULL}-* kubeadm=${K8S_FULL}-* kubectl=${K8S_FULL}-*
+    apt-get install -y kubelet=$${K8S_FULL}-* kubeadm=$${K8S_FULL}-* kubectl=$${K8S_FULL}-*
     apt-mark hold kubelet kubeadm kubectl
     systemctl enable kubelet
   EOF
 
   k8s_major_minor = join(".", slice(split(".", var.kubernetes_version), 0, 2))
   k8s_full        = var.kubernetes_version
+
+  ## WHY: AWS IAM `name_prefix` max length is 38 characters.
+  ## HOW: Truncate the cluster name so `${prefix}-node-` stays valid.
+  iam_name_prefix = substr(replace(var.name, "_", "-"), 0, 28)
 }
 
 resource "aws_instance" "master" {
@@ -200,6 +208,17 @@ resource "aws_instance" "master" {
   iam_instance_profile        = aws_iam_instance_profile.node.name
   key_name                    = var.ssh_key_name
   associate_public_ip_address = false
+
+  dynamic "instance_market_options" {
+    for_each = var.master_market_type == "spot" ? [1] : []
+    content {
+      market_type = "spot"
+
+      spot_options {
+        instance_interruption_behavior = "terminate"
+      }
+    }
+  }
 
   user_data = templatefile("${path.module}/user_data_master.sh.tftpl", {
     K8S_MAJOR_MINOR = local.k8s_major_minor
@@ -224,6 +243,17 @@ resource "aws_instance" "worker" {
   iam_instance_profile        = aws_iam_instance_profile.node.name
   key_name                    = var.ssh_key_name
   associate_public_ip_address = false
+
+  dynamic "instance_market_options" {
+    for_each = var.worker_market_type == "spot" ? [1] : []
+    content {
+      market_type = "spot"
+
+      spot_options {
+        instance_interruption_behavior = "terminate"
+      }
+    }
+  }
 
   user_data = templatefile("${path.module}/user_data_worker.sh.tftpl", {
     K8S_MAJOR_MINOR = local.k8s_major_minor

@@ -40,6 +40,28 @@ variable "instance_type_worker" {
   default     = "t3.medium"
 }
 
+variable "master_market_type" {
+  type        = string
+  description = "EC2 purchasing option for the master instance: on-demand or spot."
+  default     = "on-demand"
+
+  validation {
+    condition     = contains(["on-demand", "spot"], var.master_market_type)
+    error_message = "master_market_type must be one of: on-demand, spot."
+  }
+}
+
+variable "worker_market_type" {
+  type        = string
+  description = "EC2 purchasing option for worker instances: on-demand or spot."
+  default     = "on-demand"
+
+  validation {
+    condition     = contains(["on-demand", "spot"], var.worker_market_type)
+    error_message = "worker_market_type must be one of: on-demand, spot."
+  }
+}
+
 variable "worker_count" {
   type        = number
   default     = 3

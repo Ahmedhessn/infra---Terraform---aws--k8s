@@ -51,6 +51,13 @@ module "k8s" {
   ## SECURITY: The API (6443) is VPC-only by default; you can add external CIDRs (e.g., your public IP).
   allowed_k8s_api_cidrs = var.allowed_k8s_api_cidrs
 
+  ## COST: Use Spot for both master and workers (cheaper, but can be interrupted).
+  master_market_type = "spot"
+  worker_market_type = "spot"
+
+  ## SCALE: Number of worker nodes for dev.
+  worker_count = 2
+
   ## WHY: The master writes `kubeadm join` here, and workers read it from the same place (no SSH required).
   ## HOW: Use an env-specific parameter name to avoid any dev/prod overlap.
   join_parameter_name = "/${local.name}/kubeadm/join"

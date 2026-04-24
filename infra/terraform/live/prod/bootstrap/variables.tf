@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project" {
   type        = string
   description = "Project prefix."
-  default     = "k8s-self-managed"
+  default     = "k8s-self-managed-503459125797"
 }
 
 variable "environment" {
