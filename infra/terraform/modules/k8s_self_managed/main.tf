@@ -208,6 +208,9 @@ resource "aws_instance" "master" {
   iam_instance_profile        = aws_iam_instance_profile.node.name
   key_name                    = var.ssh_key_name
   associate_public_ip_address = false
+  ## WHY: Spot one-time instances cannot be stopped/started. Changing user_data must replace the instance.
+  ## HOW: Force replacement on user_data changes (works for on-demand too; it is just more disruptive).
+  user_data_replace_on_change = true
 
   dynamic "instance_market_options" {
     for_each = var.master_market_type == "spot" ? [1] : []
@@ -243,6 +246,8 @@ resource "aws_instance" "worker" {
   iam_instance_profile        = aws_iam_instance_profile.node.name
   key_name                    = var.ssh_key_name
   associate_public_ip_address = false
+  ## WHY: Spot one-time instances cannot be stopped/started. Changing user_data must replace the instance.
+  user_data_replace_on_change = true
 
   dynamic "instance_market_options" {
     for_each = var.worker_market_type == "spot" ? [1] : []
