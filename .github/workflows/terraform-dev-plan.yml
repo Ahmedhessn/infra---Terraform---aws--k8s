@@ -5,7 +5,16 @@ on:
     paths:
       - "infra/terraform/**"
       - ".github/workflows/terraform-dev-*.yml"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tf_state_bucket:
+        description: "S3 bucket for Terraform state (dev). Leave empty to use repo variable TF_STATE_BUCKET_DEV."
+        required: false
+        type: string
+      tf_lock_table:
+        description: "DynamoDB table for Terraform state locking (dev). Leave empty to use repo variable TF_LOCK_TABLE_DEV."
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -17,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET_DEV }}
-      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE_DEV }}
+      TF_STATE_BUCKET: ${{ inputs.tf_state_bucket || vars.TF_STATE_BUCKET_DEV }}
+      TF_LOCK_TABLE: ${{ inputs.tf_lock_table || vars.TF_LOCK_TABLE_DEV }}
       TF_STATE_KEY: "dev/k8s/terraform.tfstate"
     steps:
       - name: Checkout
@@ -37,6 +46,16 @@ jobs:
 
       - name: Terraform fmt (check)
         run: terraform fmt -check -diff -recursive infra/terraform
+
+      - name: Validate backend config vars
+        shell: bash
+        run: |
+          if [ -z "${TF_STATE_BUCKET}" ] || [ -z "${TF_LOCK_TABLE}" ]; then
+            echo "Missing backend config. Set repo Variables TF_STATE_BUCKET_DEV and TF_LOCK_TABLE_DEV, or provide inputs in 'Run workflow'."
+            echo "TF_STATE_BUCKET='${TF_STATE_BUCKET}'"
+            echo "TF_LOCK_TABLE='${TF_LOCK_TABLE}'"
+            exit 1
+          fi
 
       - name: Write backend.hcl (dev)
         shell: bash
