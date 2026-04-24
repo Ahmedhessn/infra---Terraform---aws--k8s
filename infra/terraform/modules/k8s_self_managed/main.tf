@@ -203,7 +203,6 @@ resource "terraform_data" "master_recreate" {
   input = {
     instance_type = var.instance_type_master
     market_type   = var.master_market_type
-    ami           = data.aws_ami.ubuntu.id
   }
 }
 
@@ -244,8 +243,9 @@ resource "aws_instance" "master" {
   }
 
   lifecycle {
-    create_before_destroy = true
-    replace_triggered_by  = [terraform_data.master_recreate]
+    ## WHY: Avoid two concurrent control-plane nodes during replacement (etcd/API conflicts risk).
+    ## HOW: Use the default destroy-then-create ordering (omit create_before_destroy / set false).
+    replace_triggered_by = [terraform_data.master_recreate]
   }
 }
 
