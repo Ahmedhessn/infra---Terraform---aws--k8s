@@ -47,7 +47,7 @@ variable "eks_node_min_size" {
 
 variable "eks_node_max_size" {
   type    = number
-  default = 1
+  default = 3
 }
 
 variable "eks_endpoint_public_access" {

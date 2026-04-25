@@ -14,3 +14,9 @@ variable "az_count" {
   default     = 2
 }
 
+variable "eks_cluster_name" {
+  type        = string
+  description = "Optional. When set, tag public/private subnets for EKS discovery and load balancers."
+  default     = null
+}
+
