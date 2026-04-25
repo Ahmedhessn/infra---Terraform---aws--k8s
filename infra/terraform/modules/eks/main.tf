@@ -68,26 +68,6 @@ resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOn
   role       = aws_iam_role.node.name
 }
 
-## WHY: EKS requires these tags on subnets used by the cluster (ALB/NLB + shared discovery).
-## HOW: Use index keys so for_each works when subnet IDs are (known after apply); keys must be known at plan time.
-resource "aws_ec2_tag" "private_cluster" {
-  for_each = {
-    for idx in range(length(var.private_subnet_ids)) : "private-${idx}" => var.private_subnet_ids[idx]
-  }
-  resource_id = each.value
-  key         = "kubernetes.io/cluster/${var.cluster_name}"
-  value       = "shared"
-}
-
-resource "aws_ec2_tag" "public_cluster" {
-  for_each = {
-    for idx in range(length(var.public_subnet_ids)) : "public-${idx}" => var.public_subnet_ids[idx]
-  }
-  resource_id = each.value
-  key         = "kubernetes.io/cluster/${var.cluster_name}"
-  value       = "shared"
-}
-
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
@@ -153,4 +133,75 @@ resource "aws_eks_addon" "coredns" {
   cluster_name = aws_eks_cluster.this.name
   addon_name   = "coredns"
   depends_on   = [aws_eks_addon.vpc_cni, aws_eks_node_group.this]
+}
+
+## =========================
+## EBS CSI Driver (IRSA)
+## =========================
+## WHY: EBS CSI controller needs AWS API access to provision/attach EBS volumes.
+## HOW: Create an IRSA role trusted by the cluster OIDC provider and attach AmazonEBSCSIDriverPolicy.
+
+data "tls_certificate" "eks_oidc" {
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
+
+  client_id_list = ["sts.amazonaws.com"]
+  thumbprint_list = [
+    data.tls_certificate.eks_oidc.certificates[0].sha1_fingerprint,
+  ]
+
+  tags = var.tags
+}
+
+data "aws_iam_policy_document" "ebs_csi_assume" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi" {
+  name_prefix        = "${local.iam_prefix}-ebs-"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume.json
+  tags               = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_AmazonEBSCSIDriverPolicy" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "aws-ebs-csi-driver"
+
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+
+  ## If AWS needs to overwrite existing addon settings during recovery.
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ebs_csi_AmazonEBSCSIDriverPolicy,
+    aws_eks_node_group.this,
+  ]
 }

@@ -55,3 +55,13 @@ output "configure_kubectl" {
   description = "Run locally after apply (replace region if needed)."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "monitoring" {
+  description = "Prometheus + Grafana EC2 box (dev)."
+  value = {
+    instance_id = aws_instance.monitoring.id
+    public_ip   = aws_instance.monitoring.public_ip
+    grafana_url = "http://${aws_instance.monitoring.public_ip}:3000"
+    prom_url    = "http://${aws_instance.monitoring.public_ip}:9090"
+  }
+}

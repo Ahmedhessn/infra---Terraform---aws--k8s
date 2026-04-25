@@ -61,3 +61,21 @@ variable "eks_public_access_cidrs" {
   description = "SECURITY: CIDRs allowed to use the public EKS endpoint. Tighten for non-dev."
   default     = ["0.0.0.0/0"]
 }
+
+variable "monitoring_instance_type" {
+  type        = string
+  description = "EC2 instance type for Prometheus + Grafana box."
+  default     = "t3.small"
+}
+
+variable "monitoring_access_cidrs" {
+  type        = list(string)
+  description = "SECURITY: CIDRs allowed to access Grafana (3000) + Prometheus (9090) + SSH (22). Tighten to your public IP /32."
+  default     = ["0.0.0.0/0"]
+}
+
+variable "monitoring_key_name" {
+  type        = string
+  description = "Optional EC2 key pair name to enable SSH access. Leave null to rely on SSM/instance connect (if configured)."
+  default     = null
+}

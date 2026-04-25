@@ -11,7 +11,7 @@ locals {
   ## HOW: Use only the first N AZs so subnet creation is deterministic.
   azs = slice(data.aws_availability_zones.available.names, 0, var.az_count)
 
-  eks_enabled = var.eks_cluster_name != null && trim(var.eks_cluster_name) != ""
+  eks_enabled = var.eks_cluster_name != null && trimspace(var.eks_cluster_name) != ""
 
   eks_cluster_tags = local.eks_enabled ? {
     "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
