@@ -12,7 +12,7 @@ on:
         required: false
         type: string
       confirm:
-        description: "Type DESTROY_DEV_K8S to confirm destroying dev/k8s infrastructure."
+        description: "Type DESTROY_DEV_EKS to confirm destroying dev VPC/ECR/EKS."
         required: true
         type: string
 
@@ -35,9 +35,9 @@ jobs:
       - name: Confirm intent
         shell: bash
         run: |
-          if [ "${{ inputs.confirm }}" != "DESTROY_DEV_K8S" ]; then
+          if [ "${{ inputs.confirm }}" != "DESTROY_DEV_EKS" ]; then
             echo "Refusing to destroy: confirmation string mismatch."
-            echo "Expected: DESTROY_DEV_K8S"
+            echo "Expected: DESTROY_DEV_EKS"
             echo "Got: '${{ inputs.confirm }}'"
             exit 1
           fi

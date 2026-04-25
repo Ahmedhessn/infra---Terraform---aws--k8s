@@ -153,46 +153,14 @@ resource "aws_iam_instance_profile" "node" {
 
 locals {
   ## WHY: We keep bootstrap logic in user-data to avoid manual setup.
-  ## WHAT: Install containerd + Kubernetes packages and required sysctls.
-  ## HOW: Use official Kubernetes repos (pkgs.k8s.io) and pin version via variables.
-  install_script = <<-EOF
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y
-    ## WHY: `awscli` is needed to read/write SSM Parameter Store for join command exchange.
-    apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release jq awscli
-
-    # containerd
-    apt-get install -y containerd
-    mkdir -p /etc/containerd
-    containerd config default | tee /etc/containerd/config.toml >/dev/null
-    systemctl restart containerd
-    systemctl enable containerd
-
-    # sysctl
-    modprobe br_netfilter
-    cat >/etc/sysctl.d/99-kubernetes-cri.conf <<SYSCTL
-    net.bridge.bridge-nf-call-iptables  = 1
-    net.ipv4.ip_forward                 = 1
-    net.bridge.bridge-nf-call-ip6tables = 1
-    SYSCTL
-    sysctl --system
-
-    # kubeadm/kubelet/kubectl
-    mkdir -p /etc/apt/keyrings
-    ## IMPORTANT: Use $${VAR} to escape Terraform interpolation and keep bash variables intact.
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v$${K8S_MAJOR_MINOR}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$${K8S_MAJOR_MINOR}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
-    apt-get update -y
-    apt-get install -y kubelet=$${K8S_FULL}-* kubeadm=$${K8S_FULL}-* kubectl=$${K8S_FULL}-*
-    apt-mark hold kubelet kubeadm kubectl
-    systemctl enable kubelet
-  EOF
-
+  ## WHAT: Install fragment is a separate .tftpl so bash heredocs end with terminators at column 0.
+  ## HOW: If this lived inside a Terraform <<-EOF string, indented closing lines break nested <<SYSCTL.
   k8s_major_minor = join(".", slice(split(".", var.kubernetes_version), 0, 2))
   k8s_full        = var.kubernetes_version
+  install_script = templatefile("${path.module}/install_bootstrap.sh.tftpl", {
+    K8S_MAJOR_MINOR = local.k8s_major_minor
+    K8S_FULL        = local.k8s_full
+  })
 
   ## WHY: AWS IAM `name_prefix` max length is 38 characters.
   ## HOW: Truncate the cluster name so `${prefix}-node-` stays valid.

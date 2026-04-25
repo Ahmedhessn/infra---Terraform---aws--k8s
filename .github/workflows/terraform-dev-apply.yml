@@ -16,10 +16,6 @@ on:
         description: "DynamoDB table for Terraform state locking (dev). Leave empty to use repo variable TF_LOCK_TABLE_DEV."
         required: false
         type: string
-      replace_address:
-        description: "Optional: Terraform resource address to force-replace (e.g., module.k8s.aws_instance.master)."
-        required: false
-        type: string
 
 permissions:
   id-token: write
@@ -75,18 +71,4 @@ jobs:
 
       - name: Terraform apply (dev/k8s)
         working-directory: infra/terraform/live/dev/k8s
-        shell: bash
-        run: |
-          REPLACE_ADDR="${{ github.event.inputs.replace_address }}"
-          if [ -n "${REPLACE_ADDR}" ]; then
-            # Prevent shell metacharacter injection from workflow inputs.
-            if ! printf '%s' "${REPLACE_ADDR}" | grep -Eq '^[A-Za-z0-9_.:/\[\]\-]+$'; then
-              echo "Invalid replace_address. Use a Terraform address like: module.k8s.aws_instance.master"
-              echo "Got: '${REPLACE_ADDR}'"
-              exit 1
-            fi
-            terraform apply -auto-approve -replace="${REPLACE_ADDR}"
-          else
-            terraform apply -auto-approve
-          fi
-
+        run: terraform apply -auto-approve

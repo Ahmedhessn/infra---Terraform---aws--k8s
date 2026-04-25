@@ -22,15 +22,42 @@ variable "vpc_cidr" {
   default     = "10.20.0.0/16"
 }
 
-variable "allowed_ssh_cidrs" {
-  type        = list(string)
-  description = "SECURITY: WHY: SSH is risky when exposed. WHAT: CIDRs allowed to access port 22. HOW: Keep [] to disable SSH."
-  default     = []
+variable "eks_kubernetes_version" {
+  type        = string
+  description = "EKS control plane Kubernetes version."
+  default     = "1.30"
 }
 
-variable "allowed_k8s_api_cidrs" {
+variable "eks_node_instance_types" {
   type        = list(string)
-  description = "SECURITY: WHAT: Additional CIDRs allowed to access the Kubernetes API (6443). WHY: Default access is VPC-only."
-  default     = []
+  description = "Instance type(s) for the dev managed node group."
+  default     = ["t3.medium"]
 }
 
+variable "eks_node_desired_size" {
+  type        = number
+  description = "Desired worker count for dev (use 1 for minimal cost)."
+  default     = 1
+}
+
+variable "eks_node_min_size" {
+  type    = number
+  default = 1
+}
+
+variable "eks_node_max_size" {
+  type    = number
+  default = 1
+}
+
+variable "eks_endpoint_public_access" {
+  type        = bool
+  description = "SECURITY: If true, kubectl can reach the API from the internet when combined with eks_public_access_cidrs."
+  default     = true
+}
+
+variable "eks_public_access_cidrs" {
+  type        = list(string)
+  description = "SECURITY: CIDRs allowed to use the public EKS endpoint. Tighten for non-dev."
+  default     = ["0.0.0.0/0"]
+}
