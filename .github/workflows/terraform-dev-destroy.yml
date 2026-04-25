@@ -1,11 +1,6 @@
-name: terraform-dev-apply
+name: terraform-dev-destroy
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "infra/terraform/**"
-      - ".github/workflows/terraform-dev-*.yml"
   workflow_dispatch:
     inputs:
       tf_state_bucket:
@@ -16,13 +11,17 @@ on:
         description: "DynamoDB table for Terraform state locking (dev). Leave empty to use repo variable TF_LOCK_TABLE_DEV."
         required: false
         type: string
+      confirm:
+        description: "Type DESTROY_DEV_EKS to confirm destroying dev VPC/ECR/EKS."
+        required: true
+        type: string
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  apply:
+  destroy:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -32,6 +31,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Confirm intent
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirm }}" != "DESTROY_DEV_EKS" ]; then
+            echo "Refusing to destroy: confirmation string mismatch."
+            echo "Expected: DESTROY_DEV_EKS"
+            echo "Got: '${{ inputs.confirm }}'"
+            exit 1
+          fi
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -69,6 +78,6 @@ jobs:
         working-directory: infra/terraform/live/dev/k8s
         run: terraform init -backend-config backend.hcl
 
-      - name: Terraform apply (dev/k8s)
+      - name: Terraform destroy (dev/k8s)
         working-directory: infra/terraform/live/dev/k8s
-        run: terraform apply -auto-approve
+        run: terraform destroy -auto-approve

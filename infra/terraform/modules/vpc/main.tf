@@ -10,6 +10,15 @@ data "aws_availability_zones" "available" {
 locals {
   ## HOW: Use only the first N AZs so subnet creation is deterministic.
   azs = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+
+  eks_enabled = var.eks_cluster_name != null && trimspace(var.eks_cluster_name) != ""
+
+  eks_cluster_tags = local.eks_enabled ? {
+    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+  } : {}
+
+  eks_public_subnet_tags  = local.eks_enabled ? merge(local.eks_cluster_tags, { "kubernetes.io/role/elb" = "1" }) : {}
+  eks_private_subnet_tags = local.eks_enabled ? merge(local.eks_cluster_tags, { "kubernetes.io/role/internal-elb" = "1" }) : {}
 }
 
 resource "aws_vpc" "this" {
@@ -42,9 +51,10 @@ resource "aws_subnet" "public" {
   cidr_block              = cidrsubnet(var.cidr_block, 8, each.key)
   map_public_ip_on_launch = true
 
-  tags = {
-    Name = "${var.name}-public-${each.value}"
-  }
+  tags = merge(
+    { Name = "${var.name}-public-${each.value}" },
+    local.eks_public_subnet_tags
+  )
 }
 
 resource "aws_subnet" "private" {
@@ -56,9 +66,10 @@ resource "aws_subnet" "private" {
   ## HOW: Use a different subnet index range (+10) to avoid overlap with public subnets.
   cidr_block = cidrsubnet(var.cidr_block, 8, each.key + 10)
 
-  tags = {
-    Name = "${var.name}-private-${each.value}"
-  }
+  tags = merge(
+    { Name = "${var.name}-private-${each.value}" },
+    local.eks_private_subnet_tags
+  )
 }
 
 resource "aws_eip" "nat" {
