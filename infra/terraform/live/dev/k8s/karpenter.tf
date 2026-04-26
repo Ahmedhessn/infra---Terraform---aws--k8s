@@ -194,6 +194,24 @@ data "aws_iam_policy_document" "karpenter_controller" {
   }
 
   statement {
+    sid    = "KarpenterControllerInstanceProfiles"
+    effect = "Allow"
+    actions = [
+      ## Needed by instanceprofile.garbagecollection controller.
+      "iam:ListInstanceProfiles",
+      ## Needed when managing/reconciling an instance profile.
+      "iam:GetInstanceProfile",
+      "iam:CreateInstanceProfile",
+      "iam:DeleteInstanceProfile",
+      "iam:AddRoleToInstanceProfile",
+      "iam:RemoveRoleFromInstanceProfile",
+      "iam:TagInstanceProfile",
+      "iam:UntagInstanceProfile",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "KarpenterControllerEC2"
     effect = "Allow"
     actions = [
