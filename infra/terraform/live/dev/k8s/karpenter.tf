@@ -7,7 +7,11 @@
 ##       is done via kubectl/helm after `terraform apply`.
 
 locals {
-  karpenter_name = "${local.cluster_name}-karpenter"
+  ## WHY: Many AWS resources enforce short name limits (e.g., EventBridge rule name <= 64).
+  ## HOW: Derive short deterministic prefixes from the (potentially long) cluster name.
+  karpenter_hash       = substr(md5(module.eks.cluster_name), 0, 6)
+  karpenter_short      = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 24)}-${local.karpenter_hash}"
+  karpenter_event_base = "${local.karpenter_short}-karp"
 }
 
 ## Tag the EKS cluster security group for discovery-based selection.
@@ -21,7 +25,7 @@ resource "aws_ec2_tag" "karpenter_cluster_sg_discovery" {
 ## SQS queue for interruptions
 ## -------------------------
 resource "aws_sqs_queue" "karpenter_interruption" {
-  name                      = "${local.karpenter_name}-interruption"
+  name                      = "${local.karpenter_event_base}-interrupt"
   message_retention_seconds = 300
 }
 
@@ -45,7 +49,7 @@ resource "aws_sqs_queue_policy" "karpenter_interruption" {
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
-  name        = "${local.karpenter_name}-spot-interruption"
+  name        = "${local.karpenter_event_base}-spot-int"
   description = "EC2 Spot interruption warnings to Karpenter."
 
   event_pattern = jsonencode({
@@ -61,7 +65,7 @@ resource "aws_cloudwatch_event_target" "karpenter_spot_interruption" {
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_rebalance" {
-  name        = "${local.karpenter_name}-rebalance"
+  name        = "${local.karpenter_event_base}-rebalance"
   description = "EC2 rebalance recommendations to Karpenter."
 
   event_pattern = jsonencode({
@@ -77,7 +81,7 @@ resource "aws_cloudwatch_event_target" "karpenter_rebalance" {
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_instance_state_change" {
-  name        = "${local.karpenter_name}-instance-state-change"
+  name        = "${local.karpenter_event_base}-state-change"
   description = "EC2 instance state changes to Karpenter."
 
   event_pattern = jsonencode({
@@ -107,7 +111,8 @@ data "aws_iam_policy_document" "karpenter_node_assume" {
 }
 
 resource "aws_iam_role" "karpenter_node" {
-  name_prefix        = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 28)}-karp-node-"
+  ## NOTE: IAM role name_prefix must be <= 38 chars.
+  name_prefix        = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 27)}-karp-node-"
   assume_role_policy = data.aws_iam_policy_document.karpenter_node_assume.json
 
   tags = {
@@ -137,7 +142,7 @@ resource "aws_iam_role_policy_attachment" "karpenter_node_ssm" {
 }
 
 resource "aws_iam_instance_profile" "karpenter_node" {
-  name_prefix = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 28)}-karp-node-"
+  name_prefix = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 27)}-karp-node-"
   role        = aws_iam_role.karpenter_node.name
 }
 
@@ -168,7 +173,8 @@ data "aws_iam_policy_document" "karpenter_controller_assume" {
 }
 
 resource "aws_iam_role" "karpenter_controller" {
-  name_prefix        = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 28)}-karp-ctrl-"
+  ## NOTE: IAM role name_prefix must be <= 38 chars.
+  name_prefix        = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 27)}-karp-ctrl-"
   assume_role_policy = data.aws_iam_policy_document.karpenter_controller_assume.json
 
   tags = {
@@ -238,7 +244,7 @@ data "aws_iam_policy_document" "karpenter_controller" {
 }
 
 resource "aws_iam_policy" "karpenter_controller" {
-  name_prefix = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 28)}-karp-ctrl-"
+  name_prefix = "${substr(replace(module.eks.cluster_name, "_", "-"), 0, 27)}-karp-ctrl-"
   policy      = data.aws_iam_policy_document.karpenter_controller.json
 }
 
