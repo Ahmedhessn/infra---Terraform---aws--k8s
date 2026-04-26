@@ -185,6 +185,15 @@ resource "aws_iam_role" "karpenter_controller" {
 
 data "aws_iam_policy_document" "karpenter_controller" {
   statement {
+    sid     = "KarpenterControllerEKS"
+    effect  = "Allow"
+    actions = ["eks:DescribeCluster"]
+    resources = [
+      module.eks.cluster_arn,
+    ]
+  }
+
+  statement {
     sid    = "KarpenterControllerEC2"
     effect = "Allow"
     actions = [
