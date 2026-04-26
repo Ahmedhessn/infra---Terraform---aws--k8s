@@ -22,3 +22,18 @@ output "cluster_security_group_id" {
 output "node_group_name" {
   value = aws_eks_node_group.this.node_group_name
 }
+
+output "oidc_provider_arn" {
+  description = "IRSA: OIDC provider ARN for this EKS cluster."
+  value       = aws_iam_openid_connect_provider.eks.arn
+}
+
+output "oidc_provider_url" {
+  description = "IRSA: OIDC issuer URL for this EKS cluster."
+  value       = aws_iam_openid_connect_provider.eks.url
+}
+
+output "node_role_arn" {
+  description = "IAM role ARN used by the managed node group."
+  value       = aws_iam_role.node.arn
+}

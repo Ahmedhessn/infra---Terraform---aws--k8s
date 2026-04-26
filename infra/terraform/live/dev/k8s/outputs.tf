@@ -65,3 +65,12 @@ output "monitoring" {
     prom_url    = "http://${aws_instance.monitoring.public_ip}:9090"
   }
 }
+
+output "backup_bucket" {
+  description = "S3 bucket in a different region intended for cluster backups (e.g., Velero)."
+  value = {
+    name   = aws_s3_bucket.backup.bucket
+    arn    = aws_s3_bucket.backup.arn
+    region = var.backup_bucket_region
+  }
+}

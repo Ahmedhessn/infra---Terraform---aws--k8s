@@ -37,12 +37,12 @@ variable "eks_node_instance_types" {
 variable "eks_node_desired_size" {
   type        = number
   description = "Desired worker count for dev (use 1 for minimal cost)."
-  default     = 1
+  default     = 2
 }
 
 variable "eks_node_min_size" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "eks_node_max_size" {
@@ -77,5 +77,17 @@ variable "monitoring_access_cidrs" {
 variable "monitoring_key_name" {
   type        = string
   description = "Optional EC2 key pair name to enable SSH access. Leave null to rely on SSM/instance connect (if configured)."
+  default     = null
+}
+
+variable "backup_bucket_region" {
+  type        = string
+  description = "WHY: Store cluster backups in a different AWS region for DR. WHAT: Destination S3 bucket region (must NOT be an AZ)."
+  default     = "eu-west-1"
+}
+
+variable "backup_bucket_name" {
+  type        = string
+  description = "WHY: Allow explicitly setting a globally-unique S3 bucket name for backups. WHAT: If null, a derived name will be used."
   default     = null
 }

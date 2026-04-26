@@ -19,6 +19,12 @@ locals {
 
   eks_public_subnet_tags  = local.eks_enabled ? merge(local.eks_cluster_tags, { "kubernetes.io/role/elb" = "1" }) : {}
   eks_private_subnet_tags = local.eks_enabled ? merge(local.eks_cluster_tags, { "kubernetes.io/role/internal-elb" = "1" }) : {}
+
+  ## WHY: Karpenter discovers subnets/security-groups via a shared cluster discovery tag.
+  ## WHAT: When EKS is enabled, add the standard discovery tag to all subnets.
+  karpenter_discovery_tags = local.eks_enabled ? {
+    "karpenter.sh/discovery" = var.eks_cluster_name
+  } : {}
 }
 
 resource "aws_vpc" "this" {
@@ -53,7 +59,8 @@ resource "aws_subnet" "public" {
 
   tags = merge(
     { Name = "${var.name}-public-${each.value}" },
-    local.eks_public_subnet_tags
+    local.eks_public_subnet_tags,
+    local.karpenter_discovery_tags
   )
 }
 
@@ -68,7 +75,8 @@ resource "aws_subnet" "private" {
 
   tags = merge(
     { Name = "${var.name}-private-${each.value}" },
-    local.eks_private_subnet_tags
+    local.eks_private_subnet_tags,
+    local.karpenter_discovery_tags
   )
 }
 
